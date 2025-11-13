@@ -1,0 +1,65 @@
+{
+  "description": "FACS数据分析配置文件",
+  "version": "1.0",
+
+  "data_paths": {
+    "fcs_directory": "./data/fcs_files",
+    "wsp_file": "./data/analysis.wsp",
+    "output_directory": "./output"
+  },
+
+  "channels": {
+    "gfp": "GFP-A",
+    "cd51": "CD51-APC-A",
+    "other_markers": []
+  },
+
+  "batch_mapping": {
+    "batch_A": {
+      "description": "批次A：BM和Culture组（同一天）",
+      "samples": [
+        "BM_1",
+        "BM_2",
+        "BM_3",
+        "Culture_1",
+        "Culture_2",
+        "Culture_3"
+      ],
+      "wt_control": "WT_unstained_A",
+      "compensation_controls": [
+        "comp_GFP_A",
+        "comp_CD51_A",
+        "comp_marker1_A"
+      ]
+    },
+    "batch_B": {
+      "description": "批次B：Sabq组（另一天）",
+      "samples": [
+        "Sabq_1",
+        "Sabq_2",
+        "Sabq_3"
+      ],
+      "wt_control": "WT_unstained_B",
+      "compensation_controls": [
+        "comp_GFP_B",
+        "comp_CD51_B",
+        "comp_marker1_B"
+      ]
+    }
+  },
+
+  "analysis_parameters": {
+    "threshold_percentile": 99,
+    "batch_correction_method": "quantile",
+    "compensation_method": "auto"
+  },
+
+  "gating": {
+    "use_flowjo_gates": true,
+    "manual_gating": {
+      "enabled": false,
+      "gfp_threshold": null,
+      "cd51_threshold": null
+    }
+  }
+}
