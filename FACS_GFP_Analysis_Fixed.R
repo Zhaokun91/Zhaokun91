@@ -697,76 +697,105 @@ if (DO_BATCH_CORRECTION && nrow(ALL_CELL_DATA) > 0) {
 
     cat("\n✓ 批次矫正完成！\n")
 
-    # --- 7.5 评估矫正效果 ---
-    cat("\n=== 评估矫正效果 ===\n")
+    # --- 7.5 评估矫正效果（可选步骤）---
+    cat("\n")
+    cat(paste0(rep("=", 60), collapse = ""), "\n")
+    cat("=== 评估矫正效果（可选步骤）===\n")
+    cat(paste0(rep("=", 60), collapse = ""), "\n")
 
-    # 聚类分析
-    cat("\n--- 聚类分析 ---\n")
-    labels <- corrected %>%
-      create_som(
-        rlen = 10,
-        xdim = 8,
-        ydim = 8,
-        markers = markers
-      )
+    # 将评估步骤放到单独的tryCatch中，失败不影响归一化值保存
+    tryCatch({
+      # 聚类分析
+      cat("\n--- 聚类分析 ---\n")
+      labels <- corrected %>%
+        create_som(
+          rlen = 10,
+          xdim = 8,
+          ydim = 8,
+          markers = markers
+        )
 
-    corrected <- corrected %>%
-      mutate(som = labels)
+      corrected <- corrected %>%
+        mutate(som = labels)
 
-    df <- df %>%
-      mutate(som = labels)
+      df <- df %>%
+        mutate(som = labels)
 
-    # EMD评估
-    cat("\n--- EMD评估 ---\n")
-    emd_val <- df %>%
-      evaluate_emd(
-        corrected,
-        binSize = 0.1,
-        markers = markers,
-        cell_col = "som"
-      )
+      cat("✓ 聚类完成\n")
 
-    cat(sprintf("EMD减少: %.2f\n", emd_val$reduction))
+      # EMD评估（需要emdist包）
+      cat("\n--- EMD评估 ---\n")
+      if (!requireNamespace("emdist", quietly = TRUE)) {
+        cat("⚠️ emdist包未安装，跳过EMD评估\n")
+        cat("   如需EMD评估，请运行: install.packages('emdist')\n")
+      } else {
+        emd_val <- df %>%
+          evaluate_emd(
+            corrected,
+            binSize = 0.1,
+            markers = markers,
+            cell_col = "som"
+          )
 
-    emd_plots <- plot_grid(emd_val$violin, emd_val$scatterplot)
-    print(emd_plots)
-    ggsave(file.path(out_dir, "EMD_evaluation.png"), emd_plots,
-           width = 12, height = 5, dpi = 150)
+        cat(sprintf("EMD减少: %.2f\n", emd_val$reduction))
+        cat("  (越接近1越好，表示批次效应消除得越彻底)\n")
 
-    # MAD评估
-    cat("\n--- MAD评估 ---\n")
-    mad_val <- df %>%
-      evaluate_mad(
-        corrected,
-        filter_limit = NULL,
-        markers = markers,
-        cell_col = "som"
-      )
+        emd_plots <- plot_grid(emd_val$violin, emd_val$scatterplot)
+        print(emd_plots)
+        ggsave(file.path(out_dir, "EMD_evaluation.png"), emd_plots,
+               width = 12, height = 5, dpi = 150)
+        cat("✓ EMD评估完成\n")
+      }
 
-    cat(sprintf("MAD分数: %.4f\n", mad_val))
+      # MAD评估
+      cat("\n--- MAD评估 ---\n")
+      mad_val <- df %>%
+        evaluate_mad(
+          corrected,
+          filter_limit = NULL,
+          markers = markers,
+          cell_col = "som"
+        )
 
-    # 密度图对比
-    cat("\n--- 矫正前后密度对比 ---\n")
+      cat(sprintf("MAD分数: %.4f\n", mad_val))
+      cat("  (越接近0越好，表示生物学信息保留得越完整)\n")
+      cat("✓ MAD评估完成\n")
 
-    p_before <- ggplot(df, aes(x = GFP_intensity, fill = batch)) +
-      geom_density(alpha = 0.5) +
-      labs(title = "矫正前", x = "GFP强度") +
-      theme_bw() +
-      coord_cartesian(xlim = range(c(df$GFP_intensity, corrected$GFP_intensity)))
+    }, error = function(e) {
+      cat(sprintf("\n⚠️ 评估步骤失败: %s\n", e$message))
+      cat("   这不影响归一化值的保存，继续执行...\n")
+    })
 
-    p_after <- ggplot(corrected, aes(x = GFP_intensity, fill = batch)) +
-      geom_density(alpha = 0.5) +
-      labs(title = "矫正后", x = "GFP强度") +
-      theme_bw() +
-      coord_cartesian(xlim = range(c(df$GFP_intensity, corrected$GFP_intensity)))
+    # 密度图对比（独立的tryCatch）
+    tryCatch({
+      cat("\n--- 矫正前后密度对比 ---\n")
 
-    comparison_plot <- plot_grid(p_before, p_after, ncol = 2)
-    print(comparison_plot)
-    ggsave(file.path(out_dir, "GFP_before_after_comparison.png"),
-           comparison_plot, width = 12, height = 5, dpi = 150)
+      p_before <- ggplot(df, aes(x = GFP_intensity, fill = batch)) +
+        geom_density(alpha = 0.5) +
+        labs(title = "矫正前", x = "GFP强度") +
+        theme_bw() +
+        coord_cartesian(xlim = range(c(df$GFP_intensity, corrected$GFP_intensity)))
+
+      p_after <- ggplot(corrected, aes(x = GFP_intensity, fill = batch)) +
+        geom_density(alpha = 0.5) +
+        labs(title = "矫正后", x = "GFP强度") +
+        theme_bw() +
+        coord_cartesian(xlim = range(c(df$GFP_intensity, corrected$GFP_intensity)))
+
+      comparison_plot <- plot_grid(p_before, p_after, ncol = 2)
+      print(comparison_plot)
+      ggsave(file.path(out_dir, "GFP_before_after_comparison.png"),
+             comparison_plot, width = 12, height = 5, dpi = 150)
+      cat("✓ 密度对比图已保存\n")
+    }, error = function(e) {
+      cat(sprintf("⚠️ 密度图生成失败: %s\n", e$message))
+    })
 
     # --- 7.6 保存矫正后的数据（修复版本）---
-    cat("\n=== 保存矫正后的数据 ===\n")
+    cat("\n")
+    cat(paste0(rep("=", 60), collapse = ""), "\n")
+    cat("=== 保存矫正后的数据 ===\n")
+    cat(paste0(rep("=", 60), collapse = ""), "\n")
 
     # **关键修复6：反向变换并重命名列**
     corrected_export <- corrected
