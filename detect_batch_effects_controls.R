@@ -23,11 +23,11 @@ cat("=== 批次效应检测（使用对照样本）===\n\n")
 # 配置：定义对照样本
 # ==============================================================================
 
-# 注意：请根据 identify_control_samples.R 的输出修改这里的样本名
+# 对照样本配置
 CONTROL_SAMPLES <- list(
   BatchA_Unstained = list(
     wsp = "20250131 CAR FACS_Miao.wsp",
-    samples = c("Specimen_001_Unstained.fcs"),  # 修改为实际的未染色样本名
+    samples = c("Specimen_001_NS.fcs"),  # NS = No Stain (未染色)
     batch = "BatchA",
     type = "Unstained",
     gate = "/all cells/Single Cells1/Single Cells2"  # 使用较早的门控，确保有足够细胞
@@ -35,15 +35,20 @@ CONTROL_SAMPLES <- list(
 
   BatchC_Unstained = list(
     wsp = "20250904 CAR FACS_Kun.wsp",
-    samples = c("Specimen_001_Unstained.fcs"),  # 修改为实际的未染色样本名
+    samples = c("Specimen_001_NS.fcs"),  # NS = No Stain (未染色)
     batch = "BatchC",
     type = "Unstained",
     gate = "/all cells/Single Cells1/Single Cells2"
   )
 
-  # 也可以添加FMO/AMO样本
-  # BatchA_FMO = list(...),
-  # BatchC_FMO = list(...)
+  # 如果有FMO/AMO对照样本，可以添加：
+  # BatchC_AMO = list(
+  #   wsp = "20250904 CAR FACS_Kun.wsp",
+  #   samples = c("Specimen_001_1.fcs"),  # 假设这是除GFP外都染的样本
+  #   batch = "BatchC",
+  #   type = "AMO_GFP",
+  #   gate = "/all cells/Single Cells1/Single Cells2/Live cells subset/CD45-TER119-CD31-"
+  # )
 )
 
 # 通道定义
